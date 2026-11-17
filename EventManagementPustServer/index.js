@@ -875,6 +875,20 @@ app.post('/events', async (req, res) => {
             return res.status(400).json({ error: 'Missing required event fields' });
         }
 
+        // Restrict regular students from creating events
+        const userCollection = db.collection('Users');
+        if (newEvent.createdBy?.id) {
+            const creator = await userCollection.findOne({
+                $or: [
+                    { uid: newEvent.createdBy.id },
+                    { email: newEvent.createdBy.email || '' }
+                ]
+            });
+            if (creator && creator.userroll === 'user') {
+                return res.status(403).json({ error: 'Regular students are not authorized to create events.' });
+            }
+        }
+
         // Add timestamps
         newEvent.timestamps = {
             createdAt: new Date(),
