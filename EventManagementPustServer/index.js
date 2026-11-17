@@ -711,10 +711,10 @@ app.patch('/approveevent/:id', async (req, res) => {
         const eventsCollection = db.collection('Events');
         const notificationCollection = db.collection('Notification');
 
-        const eventId = new ObjectId(req.params.id);
+        const eventQuery = ObjectId.isValid(req.params.id) ? { _id: new ObjectId(req.params.id) } : { _id: req.params.id };
 
         const result = await eventsCollection.findOneAndUpdate(
-            { _id: eventId },
+            eventQuery,
             {
                 $set: {
                     'status.approved': true,
@@ -726,21 +726,21 @@ app.patch('/approveevent/:id', async (req, res) => {
             { returnDocument: 'after' }
         );
 
-        const event = result;
+        const event = result?.value || result;
 
         const notification = {
             _id: new ObjectId(),
-            userId: event.createdBy?.id || 'unknown',
+            userId: event?.createdBy?.id || 'unknown',
             type: 'event',
             title: 'Event Approved',
-            message: `Your event "${event.name}" has been approved by the admin.`,
+            message: `Your event "${event?.name || 'Event'}" has been approved by the admin.`,
             relatedEntity: { type: 'event', id: req.params.id },
             createdAt: new Date().toISOString()
         };
 
         await notificationCollection.insertOne(notification);
 
-        res.json(event);
+        res.json(event || { success: true });
     } catch (err) {
         console.error('Approve error:', err);
         res.status(500).json({ error: 'Internal server error', details: err.message });
@@ -760,10 +760,10 @@ app.patch('/rejectevent/:id', async (req, res) => {
         const eventsCollection = db.collection('Events');
         const notificationCollection = db.collection('Notification');
 
-        const eventId = new ObjectId(req.params.id);
+        const eventQuery = ObjectId.isValid(req.params.id) ? { _id: new ObjectId(req.params.id) } : { _id: req.params.id };
 
         const result = await eventsCollection.findOneAndUpdate(
-            { _id: eventId },
+            eventQuery,
             {
                 $set: {
                     'status.approved': false,
@@ -774,14 +774,14 @@ app.patch('/rejectevent/:id', async (req, res) => {
             { returnDocument: 'after' }
         );
 
-        const event = result;
+        const event = result?.value || result;
 
         const notification = {
             _id: new ObjectId(),
-            userId: event.createdBy?.id || 'unknown',
+            userId: event?.createdBy?.id || 'unknown',
             type: 'event',
             title: 'Event Rejected',
-            message: `Your event "${event.name}" has been rejected by the admin.\nReason: ${reason}`,
+            message: `Your event "${event?.name || 'Event'}" has been rejected by the admin.\nReason: ${reason}`,
             relatedEntity: { type: 'event', id: req.params.id },
             createdAt: new Date().toISOString()
         };
